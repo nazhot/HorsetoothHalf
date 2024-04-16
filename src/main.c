@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 #define SPLIT_STRING_LENGTH 1024
 #define NUM_INPUT_FILES 5
@@ -14,14 +15,23 @@ const char outputFileName[] = "output/results.csv";
 static uint splitLine( const uint numSplits, char splitArray[numSplits][SPLIT_STRING_LENGTH], const char *line, const char delimeter ) {
     uint splitArrayIndex = 0;
     uint splitArrayIndexIndex = 0;
-    for ( uint i = 0; line[i]; ++i ) {
-        if ( line[i] == delimeter ) {
+    uint index = 0;
+    
+    while ( line[index] == delimeter ) index++; //skip all beginning delimeters
+
+    bool lastWasDelimiter = false;
+    while ( line[index] ) {
+        if ( line[index] == delimeter ) {
+            lastWasDelimiter = true;
+            index++;
             continue;
-        } else if ( i != 0 && line[i - 1] == delimeter ) {
+        } else if ( lastWasDelimiter ) {
             splitArrayIndex++;
             splitArrayIndexIndex = 0;
+            lastWasDelimiter = false;
         }
-        splitArray[splitArrayIndex][splitArrayIndexIndex++] = line[i];
+        splitArray[splitArrayIndex][splitArrayIndexIndex++] = line[index];
+        index++;
     }
     return splitArrayIndex;
 }
@@ -55,6 +65,8 @@ int main( int argc, char *argv[] ) {
             continue;
         }
 
+        printf( "Working on %s\n", inputFileName );
+
         size_t lineSize = 1024;
         char *lineBuffer = NULL;
 
@@ -82,6 +94,13 @@ int main( int argc, char *argv[] ) {
             if ( splitSize == 0 ) {
                 continue;
             }
+
+            for ( uint i = 0; i < splitSize; ++i ) {
+                printf( "%s ", splitArray[i] );
+            }
+            printf( "%s\n", inputFileName );
+
+
             const char *paceString = splitArray[splitSize - 1];
             int paceStringIndex = strlen( paceString ) - 1;
             uint paceSeconds = 0;
