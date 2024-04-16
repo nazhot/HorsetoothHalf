@@ -9,6 +9,7 @@
 #define NUM_INPUT_FILES 5
 
 const char inputDirectoryName[] = "input";
+const char outputFileName[] = "output/results.csv";
 
 static uint splitLine( const uint numSplits, char splitArray[numSplits][SPLIT_STRING_LENGTH], const char *line, const char delimeter ) {
     uint splitArrayIndex = 0;
@@ -33,13 +34,14 @@ int main( int argc, char *argv[] ) {
         exit( 1 );
     }
 
-    FILE *outputFile = fopen( "results.csv", "w" );
+    FILE *outputFile = fopen( outputFileName, "w" );
     if ( !outputFile ) {
         fprintf( stderr, "Cannot open output file\n" );
         exit( 1 );
     }
+
+    struct dirent *fileStruct = NULL;
     fprintf( outputFile, "Year, Pace (seconds), Total Time (seconds), Total Time (minutes)\n" );
-    struct dirent *fileStruct;
 
     while ( ( fileStruct = readdir( inputDirectory ) ) ) {
         char inputFileName[256];
