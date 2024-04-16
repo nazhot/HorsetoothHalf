@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <dirent.h>
 
-#define SPLIT_STRING_LENGTH 256
+#define SPLIT_STRING_LENGTH 1024
 #define NUM_INPUT_FILES 5
 
 const char inputDirectoryName[] = "input";
@@ -48,14 +48,15 @@ int main( int argc, char *argv[] ) {
         strcpy( inputFileName, inputDirectoryName );
         strcat( inputFileName, "/" );
         strcat( inputFileName, fileStruct->d_name );
+
         FILE *inputFile = fopen( inputFileName, "r" );
         if ( !inputFile ) {
             fprintf( stderr, "Cannot open %s\n", inputFileName );
             continue;
         }
+
         size_t lineSize = 1024;
         char *lineBuffer = NULL;
-        uint netTimeColumn = 0;
 
         //find the line with the column headers
         while ( getline( &lineBuffer, &lineSize, inputFile )  != -1 ) {
@@ -63,21 +64,9 @@ int main( int argc, char *argv[] ) {
                 fprintf( stderr, "Cannot get line of file %s\n", inputFileName );
                 continue;
             }
-            if ( strncmp( lineBuffer, "Place", 5 ) ) {
-                continue;
+            if ( !strncmp( lineBuffer, "Place", 5 ) ) { //lines I looked at all start with "Place"
+                break;
             }
-            printf( "%s: %s", inputFileName, lineBuffer );
-            char splitArray[20][SPLIT_STRING_LENGTH] = {0};
-            uint splitSize = splitLine( 20, splitArray, lineBuffer, ' ' );
-            printf( "Size: %u\n", splitSize );
-            for ( uint j = 0; j < splitSize; ++j ) {
-                printf( "%u: %s\n", j, splitArray[j] );
-                if ( !strncmp( splitArray[j], "Nettime", 7 ) ) {
-                    netTimeColumn = j;
-                    break;
-                }
-            }
-            break;
         }
 
         getline( &lineBuffer, &lineSize, inputFile ); //skip line of ====='s
@@ -87,21 +76,24 @@ int main( int argc, char *argv[] ) {
                 fprintf( stderr, "Cannot get line of file %s\n", inputFileName );
                 continue;
             }
+
             char splitArray[20][SPLIT_STRING_LENGTH] = {0};
-            uint splitSize = splitLine( 20, splitArray, lineBuffer, ' ' );
+            const uint splitSize = splitLine( 20, splitArray, lineBuffer, ' ' );
             if ( splitSize == 0 ) {
                 continue;
             }
-            char *paceString = splitArray[splitSize - 1];
+            const char *paceString = splitArray[splitSize - 1];
             int paceStringIndex = strlen( paceString ) - 1;
             uint paceSeconds = 0;
 
             //seconds
+            //always 2 characters at the end
             paceSeconds += paceString[paceStringIndex--] - 48;
             paceSeconds += ( paceString[paceStringIndex--] - 48 ) * 10;
             paceStringIndex--;
 
             //minutes
+            //can be 1-2 characters
             uint minuteMultiplier = 1;
             while ( paceStringIndex > -1 && paceString[paceStringIndex] != ':' ) {
                 paceSeconds += ( paceString[paceStringIndex--] - 48 ) * 60 * minuteMultiplier;
@@ -117,9 +109,9 @@ int main( int argc, char *argv[] ) {
                 hourMultiplier *= 10;
             }
 
-            uint timeSeconds = paceSeconds * 13.1;
+            const uint timeSeconds = paceSeconds * 13.1; //half marathon
 
-            fprintf( outputFile, "%s, %u, %u, %.2f\n",  inputFileName, paceSeconds, timeSeconds, timeSeconds * 1.0 / 60.0 );
+            fprintf( outputFile, "%s, %u, %u, %.2f\n",  fileStruct->d_name, paceSeconds, timeSeconds, timeSeconds * 1.0 / 60.0 );
 
         }
 
