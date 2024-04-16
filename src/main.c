@@ -1,9 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <dirent.h>
 
+#define SPLIT_STRING_LENGTH 256
+#define NUM_INPUT_FILES 5
 
-uint splitLine( uint numSplits, uint splitLength, char splitArray[numSplits][splitLength], const char *line, const char delimeter ) {
+const char inputDirectoryName[] = "input";
+
+static uint splitLine( const uint numSplits, char splitArray[numSplits][SPLIT_STRING_LENGTH], const char *line, const char delimeter ) {
     uint splitArrayIndex = 0;
     uint splitArrayIndexIndex = 0;
     for ( uint i = 0; line[i]; ++i ) {
@@ -19,8 +26,12 @@ uint splitLine( uint numSplits, uint splitLength, char splitArray[numSplits][spl
 }
 
 int main( int argc, char *argv[] ) {
-    FILE *inputFile;
-    char *inputFileNames[5] = { "2018", "2019", "2021", "2022", "2023" };
+    DIR *inputDirectory = opendir( inputDirectoryName );
+    if ( !inputDirectory ) {
+        fprintf( stderr, "Could not open input directory (%s)\n", inputDirectoryName );
+        fprintf( stderr, "Error: %i\n", errno );
+        exit( 1 );
+    }
 
     FILE *outputFile = fopen( "results.csv", "w" );
     if ( !outputFile ) {
@@ -28,11 +39,16 @@ int main( int argc, char *argv[] ) {
         exit( 1 );
     }
     fprintf( outputFile, "Year, Pace (seconds), Total Time (seconds), Total Time (minutes)\n" );
+    struct dirent *fileStruct;
 
-    for ( uint i = 0; i < 5; ++i ) {
-        inputFile = fopen( inputFileNames[i], "r" );
+    while ( ( fileStruct = readdir( inputDirectory ) ) ) {
+        char inputFileName[256];
+        strcpy( inputFileName, inputDirectoryName );
+        strcat( inputFileName, "/" );
+        strcat( inputFileName, fileStruct->d_name );
+        FILE *inputFile = fopen( inputFileName, "r" );
         if ( !inputFile ) {
-            fprintf( stderr, "Cannot open %s\n", inputFileNames[i] );
+            fprintf( stderr, "Cannot open %s\n", inputFileName );
             continue;
         }
         size_t lineSize = 1024;
@@ -42,15 +58,15 @@ int main( int argc, char *argv[] ) {
         //find the line with the column headers
         while ( getline( &lineBuffer, &lineSize, inputFile )  != -1 ) {
             if ( !lineBuffer ) {
-                fprintf( stderr, "Cannot get line of file %s\n", inputFileNames[i] );
+                fprintf( stderr, "Cannot get line of file %s\n", inputFileName );
                 continue;
             }
             if ( strncmp( lineBuffer, "Place", 5 ) ) {
                 continue;
             }
-            printf( "%s: %s", inputFileNames[i], lineBuffer );
-            char splitArray[20][256] = {0};
-            uint splitSize = splitLine( 20, 256, splitArray, lineBuffer, ' ' );
+            printf( "%s: %s", inputFileName, lineBuffer );
+            char splitArray[20][SPLIT_STRING_LENGTH] = {0};
+            uint splitSize = splitLine( 20, splitArray, lineBuffer, ' ' );
             printf( "Size: %u\n", splitSize );
             for ( uint j = 0; j < splitSize; ++j ) {
                 printf( "%u: %s\n", j, splitArray[j] );
@@ -66,11 +82,11 @@ int main( int argc, char *argv[] ) {
 
         while ( getline( &lineBuffer, &lineSize, inputFile )  != -1 ) {
             if ( !lineBuffer ) {
-                fprintf( stderr, "Cannot get line of file %s\n", inputFileNames[i] );
+                fprintf( stderr, "Cannot get line of file %s\n", inputFileName );
                 continue;
             }
-            char splitArray[20][256] = {0};
-            uint splitSize = splitLine( 20, 256, splitArray, lineBuffer, ' ' );
+            char splitArray[20][SPLIT_STRING_LENGTH] = {0};
+            uint splitSize = splitLine( 20, splitArray, lineBuffer, ' ' );
             if ( splitSize == 0 ) {
                 continue;
             }
@@ -101,7 +117,7 @@ int main( int argc, char *argv[] ) {
 
             uint timeSeconds = paceSeconds * 13.1;
 
-            fprintf( outputFile, "%s, %u, %u, %.2f\n",  inputFileNames[i], paceSeconds, timeSeconds, timeSeconds * 1.0 / 60.0 );
+            fprintf( outputFile, "%s, %u, %u, %.2f\n",  inputFileName, paceSeconds, timeSeconds, timeSeconds * 1.0 / 60.0 );
 
         }
 
