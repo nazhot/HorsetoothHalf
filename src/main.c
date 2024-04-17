@@ -37,6 +37,9 @@ static uint splitLine( const uint numSplits, char splitArray[numSplits][SPLIT_ST
 }
 
 int main( int argc, char *argv[] ) {
+
+    uint characterCounts[26] = {0};
+
     DIR *inputDirectory = opendir( inputDirectoryName );
     if ( !inputDirectory ) {
         fprintf( stderr, "Could not open input directory (%s)\n", inputDirectoryName );
@@ -95,11 +98,15 @@ int main( int argc, char *argv[] ) {
                 continue;
             }
 
-            for ( uint i = 0; i < splitSize; ++i ) {
-                printf( "%s ", splitArray[i] );
+            uint nameIndex = 3;
+            while ( splitArray[nameIndex][0] > 58 ) nameIndex++;
+            char firstLetterLastName = splitArray[nameIndex - 1][0];
+            if ( firstLetterLastName < 97 ) firstLetterLastName += 32;
+            if ( firstLetterLastName < 97 || firstLetterLastName > 122 ) {
+                printf( "Non alphabet first character encountered: %s\n", splitArray[nameIndex - 1] );
+            } else {
+                characterCounts[firstLetterLastName - 97]++;
             }
-            printf( "%s\n", inputFileName );
-
 
             const char *paceString = splitArray[splitSize - 1];
             int paceStringIndex = strlen( paceString ) - 1;
@@ -137,6 +144,24 @@ int main( int argc, char *argv[] ) {
         free( lineBuffer );
         fclose( inputFile );
     }
+
+    const uint letterRanges[] = {5,12,18};
+    uint letterRangesIndex = 0;
+    uint rangeCount = 0;
+
+    for ( uint i = 0; i < 26; ++i ) {
+        if ( i == letterRanges[letterRangesIndex] ) {
+            const char firstChar = letterRangesIndex ?
+                                   letterRanges[letterRangesIndex - 1] + 97 :
+                                   'a';
+            printf( "%c-%c: %u\n", firstChar, letterRanges[letterRangesIndex] + 96, rangeCount );
+            letterRangesIndex++;
+            rangeCount = 0;
+        }
+        rangeCount += characterCounts[i];
+        printf( "%c: %u\n", i + 97, characterCounts[i] );
+    }
+    printf( "%c-%c: %u\n", letterRanges[letterRangesIndex - 1] + 97, 'z', rangeCount );
 
     fclose( outputFile );
 
